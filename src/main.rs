@@ -6,81 +6,60 @@ fn main() {
     cwd.push("inputs.txt");
     let text_inputs = read_to_string(cwd.into_os_string()).expect("Error when reading file");
 
-    // ------------ Game rules
-    let me=1;
-    let opponent = 0;
-
     // ----------- Turn input into array
-    let game_rounds = text_inputs.split("\n").map(|round| {
-        let round_splited = round.split(" ");
-        round_splited.collect::<Vec<&str>>()
-    }).collect::<Vec<Vec<&str>>>();
+    let mut rucksacks = text_inputs.split("\n").map(|rucksack| {
+        let rucksack_content = rucksack.split_at(rucksack.len()/2);
+        (String::from(rucksack),common_letter(rucksack_content))
+    }).collect::<Vec<(String,char)>>();
 
-    // ------------- Calculate all game scores
-    let games_scores = game_rounds.iter().map(|game| {
-        let game_shape_points = (shape_to_point(game[opponent]),shape_to_point(game[me]));
-        let game_match_points=shape_match(game[opponent], game[me]);
-        (game_shape_points.0+game_match_points.0,game_shape_points.1+game_match_points.1)
-    }).collect::<Vec<(i32,i32)>>();
+    // ------------- Calculate all priorites
+    let priorities_list = rucksacks.iter().map(|rucksack| {
+        get_priority(rucksack.1)
+    }).collect::<Vec<i32>>();
 
-    // -------------- Get my scores
-    let my_scores=games_scores.iter().map(|game| game.1).collect::<Vec<i32>>();
+    // -------------- Get prorities sum
+    let priorities:i32 = priorities_list.iter().sum();
+    println!("Step1: {}",priorities);
 
-    // -------------- Get my total points
-    let my_points:i32 = my_scores.iter().sum();
-    println!("Step1: {}",my_points);
+    // -------------- Group rucksacks by 3
+    let mut grouped_rucksacks:Vec<Vec<(String,char)>>=Vec::new();
+    loop {
+        grouped_rucksacks.push(rucksacks.drain(..3).collect::<Vec<(String,char)>>());
+        if rucksacks.len() <= 0 {
+            break;
+        }
+    }
 
-    // ------------ Calculate step 2 game score
-    let new_games_scores = game_rounds.iter().map(|game| {
-        let my_move = shape_to_move(game[opponent], game[me]);
-        let game_shape_points = (shape_to_point(game[opponent]),shape_to_point(my_move));
-        let game_match_points=shape_match(game[opponent], my_move);
-        (game_shape_points.0+game_match_points.0,game_shape_points.1+game_match_points.1)
-    }).collect::<Vec<(i32,i32)>>();
+    // -------------- Calculate all priorites
+    let priorities_list = grouped_rucksacks.iter().map(|rucksacks| {
+        let priority_letter = common_item(rucksacks);
+        get_priority(priority_letter)
+    }).collect::<Vec<i32>>();
 
-    // -------------- Get my scores for step 2
-    let my_new_scores=new_games_scores.iter().map(|game| game.1).collect::<Vec<i32>>();
-
-    // -------------- Get my total points
-    let my_new_points:i32 = my_new_scores.iter().sum();
-    println!("Step2: {}",my_new_points);
+    // -------------- Get prorities sum
+    let priorities:i32 = priorities_list.iter().sum();
+    println!("Step1: {}",priorities);
 }
 
-fn shape_to_point(shape:&str)->i32{
-    match shape {
-        "A" | "X"=>1,
-        "B" | "Y"=>2,
-        "C" | "Z"=>3,
-        _=>panic!("Wrong shape")
+fn common_letter(chars:(&str,&str))->char {
+    for chr_1 in chars.0.chars().enumerate() {
+        if chars.1.contains(chr_1.1) {
+            return chr_1.1
+        }
     }
+    panic!("No Match on items");
 }
 
-fn shape_match(op:&str,me:&str)->(i32,i32) {
-    match (op,me) {
-        ("A","X")=>(3,3),
-        ("A","Y")=>(0,6),
-        ("A","Z")=>(6,0),
-        ("B","X")=>(6,0),
-        ("B","Y")=>(3,3),
-        ("B","Z")=>(0,6),
-        ("C","X")=>(0,6),
-        ("C","Y")=>(6,0),
-        ("C","Z")=>(3,3),
-        _=>panic!("Wrong game, OP:{}, ME:{}",op,me)
+fn common_item(rucksacks:&Vec<(String,char)>)->char {
+    for chr in rucksacks[0].0.chars().enumerate() {
+        if rucksacks[1].0.contains(chr.1) && rucksacks[2].0.contains(chr.1) {
+            return  chr.1;
+        }
     }
+    panic!("No common items");
 }
 
-fn shape_to_move<'a>(op:&str,me:&str)->&'a str{
-    match (op,me) {
-        ("A","X")=>"Z",
-        ("B","X")=>"X",
-        ("C","X")=>"Y",
-        ("A","Y")=>"X",
-        ("B","Y")=>"Y",
-        ("C","Y")=>"Z",
-        ("A","Z")=>"Y",
-        ("B","Z")=>"Z",
-        ("C","Z")=>"X",
-        _=>panic!("Wrong game II, OP:{}, ME:{}",op,me)
-    }
+fn get_priority(item:char)->i32{
+    let priorities = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    (priorities.find(item).expect("Priority error ") + 1) as i32
 }
